@@ -10,6 +10,7 @@ namespace SecurityApi.Tests;
 
 /// <summary>
 /// Unit tests for SecurityController endpoints.
+/// Tests cover happy paths and validation failure branches.
 /// </summary>
 public class SecurityControllerTests
 {
@@ -31,9 +32,11 @@ public class SecurityControllerTests
     // ---- Header Analysis (body) ----
 
     [Fact]
-    public void AnalyseHeadersFromBody_NullRequest_ReturnsBadRequest()
+    public void AnalyseHeadersFromBody_EmptyUrl_ReturnsBadRequest()
     {
-        var result = _controller.AnalyseHeadersFromBody(null!);
+        // Controller checks request.Url for null/whitespace
+        var request = new HeaderAnalysisRequest(Url: "", Headers: null);
+        var result = _controller.AnalyseHeadersFromBody(request);
         Assert.IsType<BadRequestObjectResult>(result);
     }
 
@@ -42,18 +45,20 @@ public class SecurityControllerTests
     {
         var findings = new List<HeaderFinding>();
         var response = new HeaderAnalysisResponse(
-            Url: string.Empty,
-            IsHttps: false,
+            Url: "https://example.com",
+            IsHttps: true,
             Findings: findings,
             Score: 85,
             Grade: "B"
         );
         _headerSvc
-            .Setup(s => s.AnalyseHeaders(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .Setup(s => s.AnalyseHeaders(
+                It.IsAny<string>(),
+                It.IsAny<Dictionary<string, string>>()))
             .Returns(response);
 
         var request = new HeaderAnalysisRequest(
-            Url: string.Empty,
+            Url: "https://example.com",
             Headers: new Dictionary<string, string> { ["X-Content-Type-Options"] = "nosniff" }
         );
         var result = _controller.AnalyseHeadersFromBody(request);
@@ -103,6 +108,7 @@ public class SecurityControllerTests
     [Fact]
     public async Task LookupHash_InvalidHashFormat_ReturnsBadRequest()
     {
+        // "not-a-hash" has length != 32/40/64 so DetectHashType returns "UNKNOWN"
         var result = await _controller.LookupHash("not-a-hash");
         Assert.IsType<BadRequestObjectResult>(result);
     }
@@ -110,7 +116,8 @@ public class SecurityControllerTests
     [Fact]
     public async Task LookupHash_ValidMd5_ReturnsOk()
     {
-        var md5 = new string('a', 32); // valid MD5 length
+        // 32 hex chars -> detected as MD5
+        var md5 = new string('a', 32);
         var response = new HashLookupResponse(
             Hash: md5,
             HashType: "MD5",
