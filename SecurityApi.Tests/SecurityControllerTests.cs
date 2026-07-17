@@ -40,22 +40,22 @@ public class SecurityControllerTests
     [Fact]
     public void AnalyseHeadersFromBody_ValidRequest_ReturnsOk()
     {
-        var response = new HeaderAnalysisResponse
-        {
-            Score = 85,
-            Grade = "B",
-            Missing = new List<string>(),
-            Present = new List<string> { "X-Content-Type-Options" },
-            Recommendations = new List<string>()
-        };
+        var findings = new List<HeaderFinding>();
+        var response = new HeaderAnalysisResponse(
+            Url: string.Empty,
+            IsHttps: false,
+            Findings: findings,
+            Score: 85,
+            Grade: "B"
+        );
         _headerSvc
             .Setup(s => s.AnalyseHeaders(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
             .Returns(response);
 
-        var request = new HeaderAnalysisRequest
-        {
-            Headers = new Dictionary<string, string> { ["X-Content-Type-Options"] = "nosniff" }
-        };
+        var request = new HeaderAnalysisRequest(
+            Url: string.Empty,
+            Headers: new Dictionary<string, string> { ["X-Content-Type-Options"] = "nosniff" }
+        );
         var result = _controller.AnalyseHeadersFromBody(request);
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(response, ok.Value);
@@ -73,14 +73,15 @@ public class SecurityControllerTests
     [Fact]
     public async Task CheckIpReputation_ValidIp_ReturnsOk()
     {
-        var response = new IpReputationResponse
-        {
-            Ip = "8.8.8.8",
-            RiskScore = 5,
-            IsKnownMalicious = false,
-            Country = "US",
-            Tags = new List<string>()
-        };
+        var response = new IpReputationResponse(
+            IpAddress: "8.8.8.8",
+            IsMalicious: false,
+            RiskLevel: "Low",
+            Tags: new List<string>(),
+            Country: "US",
+            Isp: "Google LLC",
+            Source: "local"
+        );
         _ipSvc
             .Setup(s => s.CheckAsync("8.8.8.8"))
             .ReturnsAsync(response);
@@ -110,14 +111,15 @@ public class SecurityControllerTests
     public async Task LookupHash_ValidMd5_ReturnsOk()
     {
         var md5 = new string('a', 32); // valid MD5 length
-        var response = new HashLookupResponse
-        {
-            Hash = md5,
-            HashType = "MD5",
-            IsMalicious = false,
-            DetectionCount = 0,
-            Source = "local"
-        };
+        var response = new HashLookupResponse(
+            Hash: md5,
+            HashType: "MD5",
+            IsMalicious: false,
+            MalwareName: null,
+            MalwareFamily: null,
+            DetectionCount: 0,
+            Source: "local"
+        );
         _hashSvc
             .Setup(s => s.LookupAsync(md5, "MD5"))
             .ReturnsAsync(response);
