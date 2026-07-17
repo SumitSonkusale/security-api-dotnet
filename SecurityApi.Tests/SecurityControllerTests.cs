@@ -28,18 +28,17 @@ public class SecurityControllerTests
             _logger.Object);
     }
 
-    // ---- Header Analysis ----
+    // ---- Header Analysis (body) ----
 
     [Fact]
-    public async Task AnalyzeHeaders_MissingBody_ReturnsBadRequest()
+    public void AnalyseHeadersFromBody_NullRequest_ReturnsBadRequest()
     {
-        var result = await _controller.AnalyzeHeaders(null!);
-        var bad = Assert.IsType<BadRequestObjectResult>(result);
-        Assert.NotNull(bad.Value);
+        var result = _controller.AnalyseHeadersFromBody(null!);
+        Assert.IsType<BadRequestObjectResult>(result);
     }
 
     [Fact]
-    public async Task AnalyzeHeaders_ValidRequest_ReturnsOk()
+    public void AnalyseHeadersFromBody_ValidRequest_ReturnsOk()
     {
         var response = new HeaderAnalysisResponse
         {
@@ -50,14 +49,14 @@ public class SecurityControllerTests
             Recommendations = new List<string>()
         };
         _headerSvc
-            .Setup(s => s.AnalyzeAsync(It.IsAny<Dictionary<string, string>>()))
-            .ReturnsAsync(response);
+            .Setup(s => s.AnalyseHeaders(It.IsAny<string>(), It.IsAny<Dictionary<string, string>>()))
+            .Returns(response);
 
         var request = new HeaderAnalysisRequest
         {
             Headers = new Dictionary<string, string> { ["X-Content-Type-Options"] = "nosniff" }
         };
-        var result = await _controller.AnalyzeHeaders(request);
+        var result = _controller.AnalyseHeadersFromBody(request);
         var ok = Assert.IsType<OkObjectResult>(result);
         Assert.Equal(response, ok.Value);
     }
